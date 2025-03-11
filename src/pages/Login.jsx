@@ -1,9 +1,15 @@
 import { Link } from "react-router-dom";
+import logo from "../assets/company-logo.png"; // Import the logo
 
 function Login() {
     return (
         <div className="h-dvh flex items-center justify-center">
-            <div className="card w-96 bg-base-100 shadow-xl p-6 mx-2">
+            <div className="card w-96 bg-base-100 shadow-2xl p-6 mx-2">
+                {/* Logo */}
+                <div className="flex justify-center mb-4">
+                    <img src={logo} alt="Jollibee Logo" className="h-20 w-auto" />
+                </div>
+
                 <h2 className="text-2xl font-bold text-center mb-4">Login</h2>
                 <form>
                     <input 

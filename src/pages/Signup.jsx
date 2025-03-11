@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import logo from "../assets/company-logo.png"; // Import the logo
 
 function Signup() {
     const [formData, setFormData] = useState({
@@ -26,6 +27,12 @@ function Signup() {
     return (
         <div className="h-dvh flex items-center justify-center" data-theme="redtheme">
             <div className="card w-96 bg-base-100 shadow-xl p-6 mx-2">
+                
+                {/* Logo */}
+                <div className="flex justify-center mb-4">
+                    <img src={logo} alt="Jollibee Logo" className="h-20 w-auto" />
+                </div>
+
                 <h2 className="text-2xl font-bold text-center mb-4">Sign Up</h2>
                 <form onSubmit={handleSubmit}>
                     <input 
