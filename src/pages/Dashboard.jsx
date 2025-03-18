@@ -1,13 +1,51 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Menu, Home, Users, FileText, Settings, LogOut, Bell, Search } from "lucide-react";
 import { FaSun, FaMoon } from "react-icons/fa";
+import axios from "axios";
 import logo from "../assets/company-logo.png";
-import { FaUserCircle } from "react-icons/fa";
-
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+
+  // ✅ Check if user is authenticated
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/log-in");
+    } else {
+      // Fetch user info from localStorage or API
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (storedUser) {
+        setUser(storedUser);
+      } else {
+        fetchUser(token);
+      }
+    }
+  }, [navigate]);
+
+  // ✅ Fetch user details from backend
+  const fetchUser = async (token) => {
+    try {
+      const response = await axios.get("http://localhost:5000/user", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUser(response.data);
+      localStorage.setItem("user", JSON.stringify(response.data));
+    } catch (err) {
+      console.error("Failed to fetch user data", err);
+    }
+  };
+
+  // ✅ Logout function
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/log-in");
+  };
 
   return (
     <div data-theme={darkMode ? "dark" : "light"} className="h-screen flex">
@@ -37,9 +75,9 @@ export default function Dashboard() {
           <a href="#" className="flex items-center p-3 rounded-lg hover:bg-primary hover:text-primary-content">
             <Settings size={20} /> <span className="ml-3">Settings</span>
           </a>
-          <a href="#" className="flex items-center p-3 rounded-lg bg-error text-error-content hover:bg-error/80">
+          <button onClick={handleLogout} className="flex items-center p-3 w-full rounded-lg bg-error text-error-content hover:bg-error/80">
             <LogOut size={20} /> <span className="ml-3">Logout</span>
-          </a>
+          </button>
         </nav>
       </div>
 
@@ -60,16 +98,21 @@ export default function Dashboard() {
             <button onClick={() => setDarkMode(!darkMode)} className="btn btn-circle btn-ghost">
               {darkMode ? <FaSun size={20} className="text-yellow-500" /> : <FaMoon size={20} />}
             </button>
-            <div className="avatar online">
-              <div className="w-10 rounded-full">
-                <img src="https://i.pravatar.cc/100" alt="User" />
+            {user ? (
+              <div className="avatar online">
+                <div className="w-10 rounded-full">
+                  <img src={user.profilePic || "https://i.pravatar.cc/100"} alt="User" />
+                </div>
               </div>
-            </div>
+            ) : (
+              <p>Loading...</p>
+            )}
           </div>
         </header>
 
         {/* Dashboard Content */}
         <main className="p-6 flex-1">
+          <h2 className="text-2xl font-bold mb-4">Welcome, {user?.fullName || "User"}!</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="card bg-primary text-primary-content p-4 shadow-md">
               <h2 className="text-lg font-bold text-center">Total Applications</h2>

@@ -1,23 +1,23 @@
 import { useEffect, useState } from "react";
-import { useHistory } from "react-router-dom"; // ✅ React Router v5
+import { useNavigate } from "react-router-dom"; // ✅ React Router v6
 import mainLogo from "../assets/logo.png"; // ✅ Import Main Logo
 import secondaryLogo from "../assets/company-logo.png"; // ✅ Import Secondary Logo
 
 function SplashScreen({
     duration = 3000,
-    nextPage = "/log-in"
+    nextPage = "/dashboard"
 }) {
     const [fadeOut, setFadeOut] = useState(false);
-    const history = useHistory(); // ✅ Works in React Router v5
+    const navigate = useNavigate(); // ✅ Works in React Router v6
 
     useEffect(() => {
         const timer = setTimeout(() => {
             setFadeOut(true);
-            setTimeout(() => history.push(nextPage), 500);
+            setTimeout(() => navigate(nextPage), 500);
         }, duration);
 
         return () => clearTimeout(timer);
-    }, [duration, history, nextPage]);
+    }, [duration, navigate, nextPage]);
 
     return (
         <div
