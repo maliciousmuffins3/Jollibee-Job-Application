@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
-const {db} = require('../database/db.js')
-const {generateToken} = require('../JWT/utils.js')
+const { db } = require('../database/db.js');
+const { generateToken } = require('../JWT/utils.js');
 
 const login = async (req, res) => {
     const { email, password } = req.body;
@@ -9,10 +9,9 @@ const login = async (req, res) => {
         return res.status(400).json({ error: 'Email and Password are required' });
     }
 
-    db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
-        if (err) {
-            return res.status(500).send(err);
-        }
+    try {
+        const [results] = await db.execute('SELECT * FROM admins WHERE email = ?', [email]);
+
         if (results.length === 0) {
             return res.status(400).json({ error: 'User not found' });
         }
@@ -28,8 +27,12 @@ const login = async (req, res) => {
         // Generate JWT token
         const token = generateToken(user);
         res.json({ message: 'Login successful', token, user });
-    });
-}
+
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ error: 'Server error during login' });
+    }
+};
 
 const signUp = async (req, res) => {
     const { fullName, email, password } = req.body;
@@ -39,25 +42,25 @@ const signUp = async (req, res) => {
     }
 
     try {
-        const hashedPassword = await bcrypt.hash(password, 10); // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        db.query('INSERT INTO users (fullName, email, password) VALUES (?, ?, ?)', 
-            [fullName, email, hashedPassword], (err, result) => {
-                if (err) {
-                    return res.status(500).send(err);
-                }
-                const user = { id: result.insertId, fullName, email };
-                const token = generateToken(user); // Generate JWT token
-                res.status(201).json({ message: 'User registered successfully', token, user });
-            }
+        const [result] = await db.execute(
+            'INSERT INTO admins (full_name, email, password) VALUES (?, ?, ?)', 
+            [fullName, email, hashedPassword]
         );
-    } catch (error) {
+
+        const user = { id: result.insertId, fullName, email };
+        const token = generateToken(user);
+        res.status(201).json({ message: 'User registered successfully', token, user });
+
+    } catch (err) {
+        console.error('Signup error:', err);
         res.status(500).json({ error: 'Error registering user' });
     }
-}
+};
 
 const protectedRoute = (req, res) => {
     res.json({ message: 'This is a protected route', user: req.user });
-}
+};
 
-module.exports = {login,signUp,protectedRoute};
+module.exports = { login, signUp, protectedRoute };
