@@ -10,6 +10,10 @@ const addApplicant = async (req, res) => {
 
   const { fullName, email, phoneNumber, resume } = req.body;
 
+    if(!fullName || !email || !phoneNumber || !resume){
+    res.status(500).json({message: "Keys must not be null"});
+  }
+
   try {
     const sqlQuery =
       "INSERT INTO applicants (email, full_name, phone_number, resume) VALUES (?, ?, ?, ?)";
