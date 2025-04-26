@@ -14,10 +14,12 @@ app.use(express.json());
 const authRouter = require('./routes/authRoute.js');
 const applicantRouter = require("./routes/applicantRoute.js");
 const applicantDocumentsRouter = require("./routes/applicantDocumentsRoute.js");
+const applicantStatusRouter = require("./routes/applicantStatusRoute.js")
 
 app.use('/auth', authRouter);
 app.use("/applicants", applicantRouter);
 app.use("/applicant_documents",applicantDocumentsRouter);
+app.use("/applicant_status",applicantStatusRouter)
 
 // Start the Server
 app.listen(5000, () => {

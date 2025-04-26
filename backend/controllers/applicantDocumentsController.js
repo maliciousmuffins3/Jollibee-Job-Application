@@ -70,13 +70,13 @@ const setDocument = async (req, res) => {
     const sqlQuery = rows.length === 0 ? insertQuery : updateQuery;
 
     const [result] = await db.execute(sqlQuery, parameters);
-    res.status(200).json({
+    return res.status(200).json({
       message: "Successfully added/updated the applicant_document values",
       data: result,
     });
   } catch (e) {
     console.error(e); // log full error internally
-    res.status(500).json({ error: "An unexpected error occurred." });
+    return res.status(500).json({ error: "An unexpected error occurred." });
   }
 };
 
@@ -84,7 +84,7 @@ const getDocuments = async (req, res) => {
   const { id } = req.query;
 
   if (!id) {
-    res.status(400).json({ error: "id cant be null" });
+    return res.status(400).json({ error: "id cant be null" });
   }
 
   try {
@@ -93,10 +93,10 @@ const getDocuments = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: "Applicant not found." });
     }
-    res.status(200).json(rows[0]);
+    return res.status(200).json(rows[0]);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "An unexpected error occurred." });
+    return res.status(500).json({ error: "An unexpected error occurred." });
   }
 };
 
@@ -107,10 +107,10 @@ const getAllDocuments = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: "No Applicants Found!" });
     }
-    res.status(200).json(rows);
+    return res.status(200).json(rows);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "An unexpected error occurred." });
+    return res.status(500).json({ error: "An unexpected error occurred." });
   }
 };
 

@@ -11,7 +11,7 @@ const addApplicant = async (req, res) => {
   const { fullName, email, phoneNumber, resume } = req.body;
 
     if(!fullName || !email || !phoneNumber || !resume){
-    res.status(500).json({message: "Keys must not be null"});
+      return res.status(500).json({message: "Keys must not be null"});
   }
 
   try {
@@ -24,12 +24,12 @@ const addApplicant = async (req, res) => {
       resume,
     ]);
 
-    res
+    return res
       .status(200)
       .json({ message: "Applicant added successfully", data: rows });
   } catch (e) {
     console.error("Failed to addApplicant: " + e);
-    res.status(500).json({ error: "Failed to add applicant" });
+    return res.status(500).json({ error: "Failed to add applicant" });
   }
 };
 
@@ -37,11 +37,12 @@ const getApplicants = async (req, res) => {
   try {
     const sqlQuery = "SELECT * FROM applicants";
     const [results] = await db.execute(sqlQuery);
-    if (results.length === 0)
-      res.status(404).json({ error: "No Applicants Found" });
-    res.status(200).json(results);
+    if (results.length === 0){
+      return res.status(404).json({ error: "No Applicants Found" });
+    }
+    return res.status(200).json(results);
   } catch (e) {
-    res.status(500).json({ error: "Failed to get all applicants" });
+    return res.status(500).json({ error: "Failed to get all applicants" });
   }
 };
 
@@ -83,10 +84,10 @@ const getApplicant = async (req, res) => {
           return res.status(404).json({ error: "Applicant not found." });
       }
 
-      res.status(200).json(rows[0]);
+      return res.status(200).json(rows[0]);
   } catch (error) {
       console.error("Error fetching applicant:", error);
-      res.status(500).json({ error: "GET applicant request error: " + error.message });
+      return res.status(500).json({ error: "GET applicant request error: " + error.message });
   }
 };
 
@@ -123,9 +124,9 @@ const deleteApplicant = async (req, res) => {
       " OR "
     )}`;
     const [rows] = await db.execute(sqlQuery, values);
-    res.status(200).json({ affectedRows: rows.affectedRows });
+    return res.status(200).json({ affectedRows: rows.affectedRows });
   } catch (err) {
-    res.status(500).json({ error: "Failed to delete applicant: " + err });
+    return res.status(500).json({ error: "Failed to delete applicant: " + err });
   }
 };
 
