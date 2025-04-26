@@ -1,6 +1,6 @@
 const { db } = require("../database/db.js");
 
-const addDocuments = async (req, res) => {
+const setDocument = async (req, res) => {
   const {
     id,
     sss,
@@ -32,79 +32,46 @@ const addDocuments = async (req, res) => {
   }
 
   try {
-    const sqlQuery =
+    const getSqlQuery = "SELECT * FROM applicant_documents WHERE id = ?";
+    const [rows] = await db.execute(getSqlQuery, [id]);
+    insertQuery =
       "INSERT INTO applicant_documents(id, SSS, PAG_IBIG, Health_Card, Medical_Result, Drug_Test, Blood_Test, NBI, Mayors_Permit, Tin_Number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    const [result] = await db.execute(sqlQuery, [
-      id,
-      sss,
-      pagIbig,
-      healthCard,
-      medicalResult,
-      drugTest,
-      bloodTest,
-      nbi,
-      mayorsPermit,
-      tinNumber,
-    ]);
-    res.status(200).json({
-      message: "Successfully added the applicant_document values",
-      data: result,
-    });
-  } catch (e) {
-    console.error(e); // log full error internally
-    res.status(500).json({ error: "An unexpected error occurred." });
-  }
-};
-
-const updateDocuments = async (req, res) => {
-  const {
-    id,
-    sss,
-    pagIbig,
-    healthCard,
-    medicalResult,
-    drugTest,
-    bloodTest,
-    nbi,
-    mayorsPermit,
-    tinNumber,
-  } = req.body;
-
-  if (
-    [
-      id,
-      sss,
-      pagIbig,
-      healthCard,
-      medicalResult,
-      drugTest,
-      bloodTest,
-      nbi,
-      mayorsPermit,
-      tinNumber,
-    ].some((field) => field === undefined || field === null)
-  ) {
-    return res.status(400).json({ error: "All fields are required." });
-  }
-
-  try {
-    const sqlQuery =
+    updateQuery =
       "UPDATE applicant_documents SET SSS = ?, PAG_IBIG = ?, Health_Card = ?, Medical_Result = ?, Drug_Test = ?, Blood_Test = ?, NBI = ?, Mayors_Permit = ?, Tin_Number = ? WHERE id = ?";
-    const [result] = await db.execute(sqlQuery, [
-      sss,
-      pagIbig,
-      healthCard,
-      medicalResult,
-      drugTest,
-      bloodTest,
-      nbi,
-      mayorsPermit,
-      tinNumber,
-      id,
-    ]);
 
+    let parameters = [];
+    if (rows.length === 0) {
+      parameters = [
+        id,
+        sss,
+        pagIbig,
+        healthCard,
+        medicalResult,
+        drugTest,
+        bloodTest,
+        nbi,
+        mayorsPermit,
+        tinNumber,
+      ];
+    } else {
+      parameters = [
+        sss,
+        pagIbig,
+        healthCard,
+        medicalResult,
+        drugTest,
+        bloodTest,
+        nbi,
+        mayorsPermit,
+        tinNumber,
+        id,
+      ];
+    }
+    const sqlQuery = rows.length === 0 ? insertQuery : updateQuery;
+
+    const [result] = await db.execute(sqlQuery, parameters);
     res.status(200).json({
-      message: "Successfully updated the applicant_documents table",
+      message: "Successfully added/updated the applicant_document values",
       data: result,
     });
   } catch (e) {
@@ -147,4 +114,8 @@ const getAllDocuments = async (req, res) => {
   }
 };
 
-module.exports = { addDocuments, updateDocuments, getDocuments, getAllDocuments };
+module.exports = {
+  setDocument,
+  getDocuments,
+  getAllDocuments,
+};
