@@ -39,10 +39,10 @@ const getRejectedApplicant = async (req, res) => {
       "SELECT * from rejected_applicants WHERE id = ? OR email = ? OR full_name = ?";
     const [rows] = await db.execute(selectQuery, [id, email, fullName]);
     if (!rows) {
-      res.status(400).json({ error: "Applicant can't be found!" });
+      return res.status(400).json({ error: "Applicant can't be found!" });
     }
 
-    res.status(200).json(rows[0]);
+    return res.status(200).json(rows[0]);
   } catch (e) {
     console.error(e); // log full error internally
     return res.status(500).json({ error: "An unexpected error occurred." });
@@ -54,7 +54,7 @@ const getAllRejectedApplicants = async (req, res) => {
     const selectQuery = "SELECT * from rejected_applicants";
     const [rows] = await db.execute(selectQuery);
     if (!rows) {
-      res.status(400).json({ error: "Applicant can't be found!" });
+      return res.status(400).json({ error: "Applicant can't be found!" });
     }
 
     res.status(200).json(rows);

@@ -26,11 +26,11 @@ const login = async (req, res) => {
 
         // Generate JWT token
         const token = generateToken(user);
-        res.json({ message: 'Login successful', token, user });
+        return res.json({ message: 'Login successful', token, user });
 
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ error: 'Server error during login' });
+        return res.status(500).json({ error: 'Server error during login' });
     }
 };
 
@@ -51,16 +51,16 @@ const signUp = async (req, res) => {
 
         const user = { id: result.insertId, fullName, email };
         const token = generateToken(user);
-        res.status(201).json({ message: 'User registered successfully', token, user });
+        return res.status(201).json({ message: 'User registered successfully', token, user });
 
     } catch (err) {
         console.error('Signup error:', err);
-        res.status(500).json({ error: 'Error registering user' });
+        return res.status(500).json({ error: 'Error registering user' });
     }
 };
 
 const protectedRoute = (req, res) => {
-    res.json({ message: 'This is a protected route', user: req.user });
+    return res.json({ message: 'This is a protected route', user: req.user });
 };
 
 module.exports = { login, signUp, protectedRoute };

@@ -1,4 +1,6 @@
 const { db } = require("../database/db.js");
+const fs = require("fs");
+const path = require('path');
 
 const addApplicant = async (req, res) => {
   // const exampleBody = {
@@ -8,25 +10,33 @@ const addApplicant = async (req, res) => {
   //     resume: true,
   // }
 
-  const { fullName, email, phoneNumber, resume } = req.body;
+  const { fullName, email, phoneNumber } = req.body;
+  const isResumeExist = req.file ? true : false;
+  const data = req.file.buffer;
 
-    if(!fullName || !email || !phoneNumber || !resume){
-      return res.status(500).json({message: "Keys must not be null"});
+  if (!fullName || !email || !phoneNumber || !isResumeExist) {
+    return res.status(500).json({ message: "Keys must not be null" });
   }
 
   try {
+    // Custom file path and name logic
+    const customDirectory = [fullName, req.file.originalname].join("/") + "/";
+    const customFileName = req.file.originalname; // You can customize the name here
+
     const sqlQuery =
       "INSERT INTO applicants (email, full_name, phone_number, resume) VALUES (?, ?, ?, ?)";
     const [rows] = await db.execute(sqlQuery, [
       email,
       fullName,
       phoneNumber,
-      resume,
+      req.file.originalname,
     ]);
 
-    return res
-      .status(200)
-      .json({ message: "Applicant added successfully", data: rows });
+    return res.status(200).json({
+      message: "Applicant added successfully",
+      uploadMessage: "Upload successful",
+      data: rows,
+    });
   } catch (e) {
     console.error("Failed to addApplicant: " + e);
     return res.status(500).json({ error: "Failed to add applicant" });
@@ -37,7 +47,7 @@ const getApplicants = async (req, res) => {
   try {
     const sqlQuery = "SELECT * FROM applicants";
     const [results] = await db.execute(sqlQuery);
-    if (results.length === 0){
+    if (results.length === 0) {
       return res.status(404).json({ error: "No Applicants Found" });
     }
     return res.status(200).json(results);
@@ -58,39 +68,44 @@ const getApplicant = async (req, res) => {
   const conditions = [];
   const params = [];
 
-  if (id !== null && id !== '') {
-      conditions.push("id = ?");
-      params.push(id);
+  if (id !== null && id !== "") {
+    conditions.push("id = ?");
+    params.push(id);
   }
-  if (fullName !== null && fullName !== '') {
-      conditions.push("full_name = ?");
-      params.push(fullName);
+  if (fullName !== null && fullName !== "") {
+    conditions.push("full_name = ?");
+    params.push(fullName);
   }
-  if (email !== null && email !== '') {
-      conditions.push("email = ?");
-      params.push(email);
+  if (email !== null && email !== "") {
+    conditions.push("email = ?");
+    params.push(email);
   }
 
   // No valid query parameters passed
   if (conditions.length === 0) {
-      return res.status(400).json({ error: "At least one valid query parameter (id, fullName, or email) is required." });
+    return res.status(400).json({
+      error:
+        "At least one valid query parameter (id, fullName, or email) is required.",
+    });
   }
 
   try {
-      const sqlQuery = "SELECT * FROM applicants WHERE " + conditions.join(" OR ");
-      const [rows] = await db.execute(sqlQuery, params);
+    const sqlQuery =
+      "SELECT * FROM applicants WHERE " + conditions.join(" OR ");
+    const [rows] = await db.execute(sqlQuery, params);
 
-      if (rows.length === 0) {
-          return res.status(404).json({ error: "Applicant not found." });
-      }
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Applicant not found." });
+    }
 
-      return res.status(200).json(rows[0]);
+    return res.status(200).json(rows[0]);
   } catch (error) {
-      console.error("Error fetching applicant:", error);
-      return res.status(500).json({ error: "GET applicant request error: " + error.message });
+    console.error("Error fetching applicant:", error);
+    return res
+      .status(500)
+      .json({ error: "GET applicant request error: " + error.message });
   }
 };
-
 
 const deleteApplicant = async (req, res) => {
   const { id, fullName, email } = req.query;
@@ -113,21 +128,75 @@ const deleteApplicant = async (req, res) => {
     }
 
     if (conditions.length === 0) {
-      return res
-        .status(400)
-        .json({
-          error: "Must provide at least one identifier (id, fullName, email)",
-        });
+      return res.status(400).json({
+        error: "Must provide at least one identifier (id, fullName, email)",
+      });
     }
 
-    const sqlQuery = `DELETE FROM applicants WHERE ${conditions.join(
-      " OR "
-    )}`;
+    const sqlQuery = `DELETE FROM applicants WHERE ${conditions.join(" OR ")}`;
     const [rows] = await db.execute(sqlQuery, values);
     return res.status(200).json({ affectedRows: rows.affectedRows });
   } catch (err) {
-    return res.status(500).json({ error: "Failed to delete applicant: " + err });
+    return res
+      .status(500)
+      .json({ error: "Failed to delete applicant: " + err });
   }
 };
 
-module.exports = { addApplicant, getApplicant, getApplicants, deleteApplicant };
+
+
+const downloadResume = (req, res) => {
+  const { fullName, fileName } = req.params;
+  const filePath = path.join('uploads', fullName, fileName);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: 'File not found' });
+  }
+
+  return res.sendFile(path.resolve(filePath));
+};
+
+
+const deleteResume = (req, res) => {
+  const { fullName, fileName } = req.params;
+  const filePath = path.join('uploads', fullName, fileName);
+  const folderPath = path.join('uploads', fullName);
+
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: 'File not found' });
+  }
+
+  // Delete the file
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Error deleting file' });
+    }
+
+    // Check if the directory is empty after file deletion
+    fs.readdir(folderPath, (err, files) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Error checking directory' });
+      }
+
+      // If the directory is empty, delete the folder
+      if (files.length === 0) {
+        fs.rmdir(folderPath, (err) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Error deleting folder' });
+          }
+
+          return res.status(200).json({ message: 'File and folder deleted successfully' });
+        });
+      } else {
+        return res.status(200).json({ message: 'File deleted successfully, but folder is not empty' });
+      }
+    });
+  });
+};
+
+
+module.exports = { addApplicant, getApplicant, getApplicants, deleteApplicant, downloadResume, deleteResume};
