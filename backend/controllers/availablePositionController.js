@@ -55,7 +55,9 @@ const getPosition = async (req, res) => {
   try {
     const getQuery = "SELECT * FROM available_positions WHERE id = ?";
     const [rows] = await db.execute(getQuery, [id]);
-
+    if(!rows){
+      return res.status(400).json({error: "Available Position not found!"});
+    }
     return res.status(200).json(rows[0]);
   } catch (e) {
     console.error(e); // log full error internally
@@ -67,7 +69,9 @@ const getAllPosition = async (req, res) => {
   try {
     const getQuery = "SELECT * FROM available_positions";
     const [rows] = await db.execute(getQuery);
-
+    if(!rows){
+      return res.status(400).json({error: "Available Position not found!"});
+    }
     return res.status(200).json(rows);
   } catch (e) {
     console.error(e); // log full error internally
