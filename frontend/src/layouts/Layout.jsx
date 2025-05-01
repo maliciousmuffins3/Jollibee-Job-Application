@@ -1,7 +1,7 @@
 import { Outlet, Navigate, Link } from "react-router-dom";
 import { useState } from "react";
 import logo from '../assets/company-logo.png';
-import { Menu, Home, ChartNoAxesCombined as ApplicantStatusIcon, Users as ApplicantIcon, FileText as ApplicantDocumentIcon, Settings, LogOut, Bell, Search, CalendarDays as AppointmentIcon } from "lucide-react";
+import { Menu, Home, ChartNoAxesCombined as ApplicantStatusIcon, Users as ApplicantIcon, FileText as ApplicantDocumentIcon, Settings, LogOut, Bell, Search, CalendarDays as AppointmentIcon, KeyRound  } from "lucide-react";
 import { FaSun, FaMoon } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import SearchBarHeader from "../components/SearchBarHeader";
@@ -33,7 +33,8 @@ function Layout() {
                         { icon: ApplicantIcon, label: "Applicant", path: "/applicants" },
                         { icon: AppointmentIcon, label: "Appointment", path: "/appointment" },
                         { icon: ApplicantDocumentIcon, label: "Applicant Documents", path: "/applicant-documents" },
-                        { icon: ApplicantStatusIcon, label: "Applicant Status", path: "/applicant-status" }
+                        { icon: ApplicantStatusIcon, label: "Applicant Status", path: "/applicant-status" },
+                        { icon: KeyRound, label: "Available Position", path: "/available-position" }
                     ].map((item, index) => (
                         <Link key={index} to={item.path} className="flex items-center p-3 rounded-lg hover:bg-warning hover:text-primary-content">
                             <item.icon size={20} />
@@ -67,7 +68,7 @@ function Layout() {
                         {user ? (
                             <div className="avatar online">
                                 <div className="w-10 rounded-full">
-                                    <img src={user.profilePic || "https://i.pravatar.cc/100"} alt="User" />
+                                    <img src={"https://i.pravatar.cc/1"} alt="User" />
                                 </div>
                             </div>
                         ) : (

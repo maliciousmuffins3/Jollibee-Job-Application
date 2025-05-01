@@ -3,27 +3,29 @@ const { db } = require("../database/db.js");
 const addAvailablePosition = async (req, res) => {
   const { role, requirements } = req.body;
 
+  // Check if both role and requirements are provided
   if (!role || !requirements) {
-    return res.status(400).json({ error: "Key mustn't be null!" });
+    return res.status(400).json({ error: "Role and requirements must not be null!" });
   }
 
   try {
+    // Insert the correct values for role and requirements into the database
     const insertQuery =
       "INSERT INTO available_positions(role, requirements) VALUES(?, ?)";
-    const [results] = await db.execute(insertQuery, [
-      requirements,
-      requirements,
-    ]);
+    
+    // Make sure to insert role and requirements correctly
+    const [results] = await db.execute(insertQuery, [role, requirements]);
 
     return res.status(200).json({
       message: "Successfully added new available position!",
       data: results,
     });
   } catch (e) {
-    console.error(e); // log full error internally
+    console.error(e); // Log full error internally for debugging
     return res.status(500).json({ error: "An unexpected error occurred." });
   }
 };
+
 
 const removeAvailablePosition = async (req, res) => {
   const { id } = req.query;

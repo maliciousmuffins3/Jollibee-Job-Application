@@ -13,6 +13,7 @@ import ApplicantList from "./pages/ApplicantList";
 import AppointmentSchedule from './pages/AppointmentSchedule';
 import ApplicantStatus from "./pages/ApplicantStatus";
 import LandingPage from "./pages/LandingPage";
+import AvailablePositions from "./pages/AvailablePositions";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -77,7 +78,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/appointment" element={<AppointmentSchedule />} />
           <Route path="/applicant-status" element={<ApplicantStatus />} />
-
+          <Route path="/available-position" element={<AvailablePositions />} />
         </Route>
       </Routes>
     </>

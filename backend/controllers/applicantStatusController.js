@@ -1,29 +1,34 @@
 const { db } = require("../database/db.js");
 
 const setStatus = async (req, res) => {
-  const { id, status } = req.body;
+  const { id, status, schedule_date } = req.body;
 
-  if (!id || !status) {
-    return res.status(400).json({ error: "Id or status cant be null" });
+  if (!id || !status || !schedule_date) {
+    return res.status(400).json({ error: "Id, status, and schedule_date are required." });
   }
 
   try {
     const getStatusQuery = "SELECT * FROM process_status WHERE id = ?";
     const [rows] = await db.execute(getStatusQuery, [id]);
-    let setQuery;
+
+    let setQuery, values;
+
     if (rows.length === 0) {
-      setQuery = "INSERT INTO process_status(status, id) VALUES (?, ?)";
+      setQuery = "INSERT INTO process_status (status, schedule_date, id) VALUES (?, ?, ?)";
+      values = [status, schedule_date, id];
     } else {
-      setQuery = "UPDATE process_status SET status = ? WHERE id = ?";
+      setQuery = "UPDATE process_status SET status = ?, schedule_date = ? WHERE id = ?";
+      values = [status, schedule_date, id];
     }
 
-    const [result] = await db.execute(setQuery, [status, id]);
+    const [result] = await db.execute(setQuery, values);
+
     return res.status(200).json({
       message: "Successfully added/updated the status values",
       data: result,
     });
   } catch (e) {
-    console.error(e); // log full error internally
+    console.error(e);
     return res.status(500).json({ error: "An unexpected error occurred." });
   }
 };
