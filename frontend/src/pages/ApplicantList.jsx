@@ -5,22 +5,20 @@ import { toast } from "react-toastify";
 
 function ApplicantList() {
   const [applicantList, setApplicantList] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]); // Only store ids, not full applicant objects
-  const [statusMap, setStatusMap] = useState({}); // key: applicant ID, value: status string
-  const [scheduleDate, setScheduleDate] = useState(""); // state for schedule date and time
+  const [filteredApplicantList, setFilteredApplicantList] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [statusMap, setStatusMap] = useState({});
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
 
-  // Handles checkbox changes
   const handleCheckboxChange = (event, applicantId) => {
     const isChecked = event.target.checked;
-
     setSelectedIds((prev) =>
-      isChecked
-        ? [...prev, applicantId] // Add the ID if checked
-        : prev.filter((id) => id !== applicantId) // Remove the ID if unchecked
+      isChecked ? [...prev, applicantId] : prev.filter((id) => id !== applicantId)
     );
   };
 
-  // Fetch the resume file for the applicant
   async function fetchFile(fullName, fileName) {
     if (!fileName) {
       alert("No resume file available for this applicant.");
@@ -50,7 +48,6 @@ function ApplicantList() {
     }
   }
 
-  // Handles scheduling
   const handleSchedule = async () => {
     if (!scheduleDate) {
       toast.error("Please select a schedule date and time.");
@@ -64,8 +61,6 @@ function ApplicantList() {
           status: "Scheduled",
           schedule_date: scheduleDate,
         });
-
-        setStatusMap((prev) => ({ ...prev, [applicantId]: "Scheduled" }));
       } catch (e) {
         console.error("Error scheduling applicant:", applicantId, e);
         toast.error(`Failed to schedule applicant ID ${applicantId}`);
@@ -73,17 +68,16 @@ function ApplicantList() {
     }
 
     toast.success("Meeting scheduled for selected applicants.");
-    setSelectedIds([]); // Clear selected after scheduling
+    setSelectedIds([]);
+    await refreshApplicantList(); // 🔄 Force refresh after scheduling
   };
 
-  // Handles rejection of applicants
   const handleReject = async () => {
     for (const applicantId of selectedIds) {
       const applicant = applicantList.find((a) => a.id === applicantId);
       const { id, full_name, email, phone_number } = applicant;
 
       try {
-        // Step 1: Add to rejected applicants table
         await axios.post("http://localhost:5000/reject/add-reject-applicants", {
           id,
           fullName: full_name,
@@ -91,14 +85,11 @@ function ApplicantList() {
           phoneNumber: phone_number,
         });
 
-        // Step 2: Delete from applicant list
         const deleteUrl = `http://localhost:5000/applicants/delete-applicant?id=${id}&fullName=${full_name}`;
         await axios.delete(deleteUrl);
 
-        // Show success toast after rejecting an applicant
         toast.success(`Applicant ${full_name} rejected successfully.`);
 
-        // Remove the rejected applicant from the local state (immediate update)
         setApplicantList((prevList) =>
           prevList.filter((applicant) => applicant.id !== id)
         );
@@ -108,24 +99,32 @@ function ApplicantList() {
       }
     }
 
-    // Clear selected applicants after rejection
     setSelectedIds([]);
   };
 
-  // Refresh the applicant list
   const refreshApplicantList = async () => {
     try {
       const response = await axios.get(
         "http://localhost:5000/applicants/get-applicants"
       );
-      setApplicantList(response.data);
+      const applicants = response.data;
+      setApplicantList(applicants);
+      setFilteredApplicantList(applicants);
+
+      const statusResults = await Promise.all(
+        applicants.map((app) => fetchApplicantStatus(app.id))
+      );
+      const map = {};
+      applicants.forEach((app, index) => {
+        map[app.id] = statusResults[index];
+      });
+      setStatusMap(map);
     } catch (e) {
       console.error("Error refreshing applicant list:", e);
       toast.error("Failed to refresh applicant list.");
     }
   };
 
-  // Fetch the status of an applicant by ID
   const fetchApplicantStatus = async (id) => {
     try {
       const res = await axios.get(
@@ -133,11 +132,32 @@ function ApplicantList() {
       );
       return res.data?.status || "Applied";
     } catch (e) {
-      return "Applied"; // fallback if not found or error
+      return "Applied";
     }
   };
 
-  // Fetch applicants and their statuses
+  const handleFilter = () => {
+    let filtered = applicantList;
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (applicant) =>
+          applicant.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          applicant.applying_position?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (selectedDate) {
+      filtered = filtered.filter(
+        (applicant) =>
+          new Date(applicant.scheduleDate).toLocaleDateString() ===
+          new Date(selectedDate).toLocaleDateString()
+      );
+    }
+
+    setFilteredApplicantList(filtered);
+  };
+
   useEffect(() => {
     const fetchApplicants = async () => {
       try {
@@ -145,14 +165,12 @@ function ApplicantList() {
           "http://localhost:5000/applicants/get-applicants"
         );
         const applicants = response.data;
-
         setApplicantList(applicants);
+        setFilteredApplicantList(applicants);
 
-        // Fetch status for each applicant
         const statusResults = await Promise.all(
           applicants.map((app) => fetchApplicantStatus(app.id))
         );
-
         const map = {};
         applicants.forEach((app, index) => {
           map[app.id] = statusResults[index];
@@ -166,17 +184,37 @@ function ApplicantList() {
     fetchApplicants();
   }, []);
 
+  useEffect(() => {
+    handleFilter();
+  }, [searchTerm, selectedDate]);
+
   return (
     <>
-      <h1 className="font-bold text-[clamp(2rem,5vw,2.5rem)] mb-4">
-        Applicants
-      </h1>
+      <h1 className="font-bold text-[clamp(2rem,5vw,2.5rem)] mb-4">Applicants</h1>
+
+      {/* Search and Date Filter */}
+      <div className="mb-4 flex gap-4">
+        <input
+          type="text"
+          className="input input-bordered w-1/4"
+          placeholder="Search by Name or Position"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <label className="font-semibold flex items-center ml-auto">Schedule Date Filter:</label>
+        <input
+          type="date"
+          className="input input-bordered"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+        />
+      </div>
+
       <div className="overflow-x-auto">
         <table className="table text-center">
           <thead>
             <tr>
               <th>
-                {/* Refresh Button */}
                 <div className="flex justify-center">
                   <button
                     className="btn btn-ghost text-xl text-blue-600 hover:underline flex items-center gap-2 p-2 border rounded-full"
@@ -190,18 +228,19 @@ function ApplicantList() {
               <th>Full Name</th>
               <th>Email</th>
               <th>Phone Number</th>
+              <th>Position</th>
               <th>Status</th>
               <th>Resume</th>
             </tr>
           </thead>
           <tbody>
-            {applicantList.map((item) => (
+            {filteredApplicantList.map((item) => (
               <tr key={item.id}>
                 <td>
                   <input
                     type="checkbox"
                     className="checkbox"
-                    checked={selectedIds.includes(item.id)} // Reflects the selected state
+                    checked={selectedIds.includes(item.id)}
                     onChange={(e) => handleCheckboxChange(e, item.id)}
                   />
                 </td>
@@ -209,6 +248,7 @@ function ApplicantList() {
                 <td>{item.full_name}</td>
                 <td>{item.email}</td>
                 <td>{item.phone_number}</td>
+                <td>{item.applying_position || "—"}</td>
                 <td>{statusMap[item.id] || "Applied"}</td>
                 <td>
                   <button

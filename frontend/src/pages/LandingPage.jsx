@@ -11,6 +11,7 @@ const LandingPage = () => {
     fullName: "",
     email: "",
     phoneNumber: "",
+    applyingPosition: "",
     file: null,
   });
   const [responseMsg, setResponseMsg] = useState({ message: "", type: "" });
@@ -43,6 +44,7 @@ const LandingPage = () => {
     form.append("fullName", formData.fullName);
     form.append("email", formData.email);
     form.append("phoneNumber", formData.phoneNumber);
+    form.append("applyingPosition", formData.applyingPosition);
     form.append("file", formData.file);
 
     try {
@@ -53,13 +55,22 @@ const LandingPage = () => {
       const data = await res.json();
       if (res.ok) {
         setResponseMsg({ message: data.message, type: "success" });
-        setFormData({ fullName: "", email: "", phoneNumber: "", file: null });
+        setFormData({
+          fullName: "",
+          email: "",
+          phoneNumber: "",
+          applyingPosition: "",
+          file: null,
+        });
       } else {
         setResponseMsg({ message: data.message, type: "error" });
       }
     } catch (err) {
       console.error(err);
-      setResponseMsg({ message: "Error submitting the form. Please try again.", type: "error" });
+      setResponseMsg({
+        message: "Error submitting the form. Please try again.",
+        type: "error",
+      });
     }
   };
 
@@ -113,7 +124,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Available Positions (Dark Cards) */}
+      {/* Available Positions */}
       <section className="bg-gray-950 py-16 px-6 md:px-20 text-gray-100">
         <div className="text-center mb-10">
           <h3 className="text-3xl font-bold text-red-500">Available Positions</h3>
@@ -187,6 +198,24 @@ const LandingPage = () => {
                   className="input input-bordered w-full"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400">Applying Position</label>
+                <select
+                  name="applyingPosition"
+                  value={formData.applyingPosition}
+                  onChange={handleChange}
+                  className="select select-bordered w-full"
+                  required
+                >
+                  <option value="">Select a position</option>
+                  {jobRoles.map((job) => (
+                    <option key={job.id} value={job.role}>
+                      {job.role}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

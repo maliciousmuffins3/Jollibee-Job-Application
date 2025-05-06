@@ -4,8 +4,10 @@ import { toast } from "react-toastify";
 
 function ApplicantStatusManager() {
   const [applicantList, setApplicantList] = useState([]);
+  const [filteredApplicants, setFilteredApplicants] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [statusMap, setStatusMap] = useState({});
+  const [searchTerm, setSearchTerm] = useState(""); // state for search term
 
   const fetchApplicantStatus = async (id) => {
     try {
@@ -18,11 +20,42 @@ function ApplicantStatusManager() {
     }
   };
 
+  const handleHire = async () => {
+    try {
+      await Promise.all(
+        selectedIds.map(async (id) => {
+          const applicant = applicantList.find((a) => a.id === id);
+          if (!applicant) return;
+  
+          const { full_name } = applicant;
+  
+          await axios.delete(
+            `http://localhost:5000/applicants/delete-applicant?id=${id}&fullName=${encodeURIComponent(full_name)}`
+          );
+        })
+      );
+  
+      toast.success(`Hired ${selectedIds.length} applicant(s).`);
+      setApplicantList((prevList) =>
+        prevList.filter((a) => !selectedIds.includes(a.id))
+      );
+      setFilteredApplicants((prevList) =>
+        prevList.filter((a) => !selectedIds.includes(a.id))
+      );
+      setSelectedIds([]);
+    } catch (e) {
+      console.error("Error hiring applicants:", e);
+      toast.error("Failed to hire one or more applicants.");
+    }
+  };
+  
+
   const fetchApplicants = async () => {
     try {
       const response = await axios.get("http://localhost:5000/applicants/get-applicants");
       const applicants = response.data;
       setApplicantList(applicants);
+      setFilteredApplicants(applicants); // Set filtered applicants initially
 
       const statusResults = await Promise.all(
         applicants.map((app) => fetchApplicantStatus(app.id))
@@ -108,9 +141,39 @@ function ApplicantStatusManager() {
     }
   };
 
+  // Handle the search functionality
+  const handleSearch = (e) => {
+    const value = e.target.value.toLowerCase();
+    setSearchTerm(value);
+
+    if (value === "") {
+      // If search term is empty, show all applicants
+      setFilteredApplicants(applicantList);
+    } else {
+      // Filter applicants based on the search term
+      const filtered = applicantList.filter((applicant) =>
+        Object.values(applicant).some((val) =>
+          String(val).toLowerCase().includes(value)
+        )
+      );
+      setFilteredApplicants(filtered);
+    }
+  };
+
   return (
     <>
-      <h1 className="font-bold text-[clamp(2rem,5vw,2.5rem)] mb-4">Applicants</h1>
+      <h1 className="font-bold text-[clamp(2rem,5vw,2.5rem)] mb-4">Applicants Status</h1>
+
+      <div className="mb-4 flex justify-between items-center">
+        {/* Search Bar */}
+        <input
+          type="text"
+          placeholder="Search applicants..."
+          className="input input-bordered w-full max-w-xs"
+          value={searchTerm}
+          onChange={handleSearch}
+        />
+      </div>
 
       <div className="overflow-x-auto">
         <table className="table text-center">
@@ -125,43 +188,58 @@ function ApplicantStatusManager() {
             </tr>
           </thead>
           <tbody>
-            {applicantList.map((applicant) => (
-              <tr key={applicant.id}>
-                <td>
-                  <input
-                    type="checkbox"
-                    className="checkbox"
-                    checked={selectedIds.includes(applicant.id)}
-                    onChange={(e) => handleCheckboxChange(e, applicant.id)}
-                  />
+            {filteredApplicants.length > 0 ? (
+              filteredApplicants.map((applicant) => (
+                <tr key={applicant.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      className="checkbox"
+                      checked={selectedIds.includes(applicant.id)}
+                      onChange={(e) => handleCheckboxChange(e, applicant.id)}
+                    />
+                  </td>
+                  <td>{applicant.id}</td>
+                  <td>{applicant.full_name}</td>
+                  <td>{applicant.email}</td>
+                  <td>{applicant.phone_number}</td>
+                  <td>{statusMap[applicant.id] || "Applied"}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} className="text-gray-500 italic">
+                  No applicants found.
                 </td>
-                <td>{applicant.id}</td>
-                <td>{applicant.full_name}</td>
-                <td>{applicant.email}</td>
-                <td>{applicant.phone_number}</td>
-                <td>{statusMap[applicant.id] || "Applied"}</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
       {selectedIds.length > 0 && (
-        <div className="mt-4 flex gap-4">
-          <button
-            className="btn btn-info text-white"
-            onClick={handleSetTraining}
-          >
-            Set Selected to Training
-          </button>
-          <button
-            className="btn btn-error text-white"
-            onClick={handleReject}
-          >
-            Reject Selected
-          </button>
-        </div>
-      )}
+  <div className="mt-4 flex gap-4">
+    <button
+      className="btn btn-info text-white"
+      onClick={handleSetTraining}
+    >
+      Set Selected to Training
+    </button>
+    <button
+      className="btn btn-error text-white"
+      onClick={handleReject}
+    >
+      Reject Selected
+    </button>
+    <button
+      className="btn btn-success text-white"
+      onClick={handleHire}
+    >
+      Hire Selected
+    </button>
+  </div>
+)}
+
     </>
   );
 }
