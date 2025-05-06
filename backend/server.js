@@ -18,6 +18,7 @@ const applicantDocumentsRouter = require("./routes/applicantDocumentsRoute.js");
 const applicantStatusRouter = require("./routes/applicantStatusRoute.js");
 const availablePositionRouter = require("./routes/availablePositionRoute.js");
 const rejectedApplicantRouter = require("./routes/rejectedApplicantsRoute.js");
+const nodemailerRouter = require("./routes/email.js");
 
 
 app.use('/auth', authRouter);
@@ -26,6 +27,7 @@ app.use("/applicant_documents",applicantDocumentsRouter);
 app.use("/applicant_status",applicantStatusRouter);
 app.use("/available_position",availablePositionRouter);
 app.use("/reject",rejectedApplicantRouter);
+app.use("/email",nodemailerRouter);
 
 
 // Start the Server

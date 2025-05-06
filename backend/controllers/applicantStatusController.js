@@ -2,10 +2,13 @@ const { db } = require("../database/db.js");
 
 const setStatus = async (req, res) => {
   const { id, status, schedule_date } = req.body;
+  let { attendedAppointment } = req.body || false; 
 
   if (!id || !status || !schedule_date) {
     return res.status(400).json({ error: "Id, status, and schedule_date are required." });
   }
+  
+  attendedAppointment = attendedAppointment ? true : false;
 
   try {
     const getStatusQuery = "SELECT * FROM process_status WHERE id = ?";
@@ -14,11 +17,11 @@ const setStatus = async (req, res) => {
     let setQuery, values;
 
     if (rows.length === 0) {
-      setQuery = "INSERT INTO process_status (status, schedule_date, id) VALUES (?, ?, ?)";
-      values = [status, schedule_date, id];
+      setQuery = "INSERT INTO process_status (status, schedule_date, id, attended_appointment) VALUES (?, ?, ?, ?)";
+      values = [status, schedule_date, id, attendedAppointment];
     } else {
-      setQuery = "UPDATE process_status SET status = ?, schedule_date = ? WHERE id = ?";
-      values = [status, schedule_date, id];
+      setQuery = "UPDATE process_status SET status = ?, schedule_date = ?, attended_appointment = ? WHERE id = ?";
+      values = [status, schedule_date, attendedAppointment, id];
     }
 
     const [result] = await db.execute(setQuery, values);
@@ -69,4 +72,24 @@ const getAllStatus = async (req, res) => {
   }
 };
 
-module.exports = { setStatus, getStatus, getAllStatus };
+const updateAttended = async (req,res) => {
+  const {id,attendedAppointment} = req.body;
+
+  if(!id && !attendedAppointment){
+    return res.status(400).json({ error: "Invalid Payload/No payload" })
+  }
+
+  try {
+    const sqlGetQuery = "UPDATE process_status SET attended_appointment = ? WHERE id = ?";
+    const [result] = await db.execute(sqlGetQuery,[attendedAppointment,id]) 
+    return res.status(200).json({
+      message: "Successfully added/updated the status values",
+      data: result,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "An unexpected error occurred." });
+  }
+}
+
+module.exports = { setStatus, getStatus, getAllStatus, updateAttended };

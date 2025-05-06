@@ -4,6 +4,7 @@ import HeroImage from "../assets/hero-image.png";
 import Logo from "../assets/company-logo.png";
 
 const LandingPage = () => {
+  
   const [isOpen, setIsOpen] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [jobRoles, setJobRoles] = useState([]);
@@ -103,50 +104,55 @@ const LandingPage = () => {
       )}
 
       {/* Hero Section */}
-      <section className="flex flex-col md:flex-row items-center justify-center md:justify-between min-h-screen p-6 bg-gray-900 pt-20">
-        <div className="text-center md:text-left max-w-lg">
-          <h2 className="text-yellow-400 font-bold" style={{ fontSize: "clamp(2rem, 5vw, 5rem)" }}>
-            Your Future Starts Here
-          </h2>
-          <p className="text-lg text-gray-300 mt-4" style={{ fontSize: "clamp(1rem, 3vw, 1.5rem)" }}>
-            Join our team and build an amazing career with us.
-          </p>
-          <button
-            className="btn bg-red-600 text-white mt-6 hover:bg-red-700 border-none"
-            onClick={() => setIsOpen(true)}
-          >
-            Apply Now
-          </button>
-        </div>
+{/* Hero Section */}
+<section className="flex flex-col md:flex-row items-center justify-center md:justify-between min-h-screen p-6 bg-gray-900 pt-20">
+  <div className="text-center md:text-left max-w-lg">
+    <h2 className="text-yellow-400 font-bold" style={{ fontSize: "clamp(2rem, 5vw, 5rem)" }}>
+      Your Future Starts Here
+    </h2>
+    <p className="text-lg text-gray-300 mt-4" style={{ fontSize: "clamp(1rem, 3vw, 1.5rem)" }}>
+      Join our team and build an amazing career with us.
+    </p>
+    <button
+      className="btn bg-red-600 text-white mt-6 hover:bg-red-700 border-none"
+      onClick={() => setIsOpen(true)}
+    >
+      Apply Now
+    </button>
+    {/* Anchor to Available Jobs Section */}
+    <p className="text-sm text-gray-400 mt-3">
+      Looking for a role? <a href="#available-jobs" className="text-yellow-400 hover:underline">See Available Jobs</a>
+    </p>
+  </div>
 
-        <div className="hidden md:block w-full md:w-1/2 mt-10 md:mt-0 overflow-hidden">
-          <img src={HeroImage} alt="Hero" className="w-full rounded-lg translate-x-2" />
-        </div>
-      </section>
+  <div className="hidden md:block w-full md:w-1/2 mt-10 md:mt-0 overflow-hidden">
+    <img src={HeroImage} alt="Hero" className="w-full rounded-lg translate-x-2" />
+  </div>
+</section>
 
-      {/* Available Positions */}
-      <section className="bg-gray-950 py-16 px-6 md:px-20 text-gray-100">
-        <div className="text-center mb-10">
-          <h3 className="text-3xl font-bold text-red-500">Available Positions</h3>
-          <p className="text-gray-400 mt-2">Explore roles that match your skills and passion.</p>
-        </div>
+{/* Available Positions Section */}
+<section className="bg-gray-950 py-16 px-6 md:px-20 text-gray-100" id="available-jobs">
+  <div className="text-center mb-10">
+    <h3 className="text-3xl font-bold text-red-500">Available Positions</h3>
+    <p className="text-gray-400 mt-2">Explore roles that match your skills and passion.</p>
+  </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {jobRoles.length === 0 ? (
-            <p className="col-span-full text-center text-gray-400">No positions currently available.</p>
-          ) : (
-            jobRoles.map((job) => (
-              <div
-                key={job.id}
-                className="bg-gray-800 text-gray-100 p-6 rounded-xl shadow-md hover:shadow-lg border border-gray-700 transition-all duration-200 hover:scale-[1.02]"
-              >
-                <h4 className="text-xl font-semibold text-yellow-400">{job.role}</h4>
-                <p className="text-gray-300 mt-2">{job.requirements}</p>
-              </div>
-            ))
-          )}
+  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {jobRoles.length === 0 ? (
+      <p className="col-span-full text-center text-gray-400">No positions currently available.</p>
+    ) : (
+      jobRoles.map((job) => (
+        <div
+          key={job.id}
+          className="bg-gray-800 text-gray-100 p-6 rounded-xl shadow-md hover:shadow-lg border border-gray-700 transition-all duration-200 hover:scale-[1.02]"
+        >
+          <h4 className="text-xl font-semibold text-yellow-400">{job.role}</h4>
+          <p className="text-gray-300 mt-2">{job.requirements}</p>
         </div>
-      </section>
+      ))
+    )}
+  </div>
+</section>
 
       {/* Application Modal */}
       {isOpen && (

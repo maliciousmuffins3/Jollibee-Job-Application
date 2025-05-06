@@ -27,10 +27,16 @@ function ApplicantStatusManager() {
           const applicant = applicantList.find((a) => a.id === id);
           if (!applicant) return;
   
-          const { full_name } = applicant;
+          const { full_name, email } = applicant;
   
+          // Delete applicant
           await axios.delete(
             `http://localhost:5000/applicants/delete-applicant?id=${id}&fullName=${encodeURIComponent(full_name)}`
+          );
+  
+          // Send hiring email
+          await axios.get(
+            `http://localhost:5000/email/send-hired?email=${encodeURIComponent(email)}`
           );
         })
       );
@@ -48,6 +54,7 @@ function ApplicantStatusManager() {
       toast.error("Failed to hire one or more applicants.");
     }
   };
+  
   
 
   const fetchApplicants = async () => {
@@ -85,18 +92,28 @@ function ApplicantStatusManager() {
 
   const handleSetTraining = async () => {
     const now = new Date().toISOString().slice(0, 19).replace("T", " ");
-
+  
     try {
       await Promise.all(
-        selectedIds.map((id) =>
-          axios.post("http://localhost:5000/applicant_status/set-status", {
+        selectedIds.map(async (id) => {
+          // Set applicant status to 'Training'
+          await axios.post("http://localhost:5000/applicant_status/set-status", {
             id,
             status: "Training",
             schedule_date: now,
-          })
-        )
+          });
+  
+          // Get the applicant's email
+          const applicant = applicantList.find((a) => a.id === id);
+          if (applicant && applicant.email) {
+            // Send email about the training status
+            await axios.get(
+              `http://localhost:5000/email/send-training?email=${encodeURIComponent(applicant.email)}`
+            );
+          }
+        })
       );
-
+  
       toast.success(`Set ${selectedIds.length} applicant(s) to Training.`);
       const updatedMap = { ...statusMap };
       selectedIds.forEach((id) => {
@@ -109,29 +126,47 @@ function ApplicantStatusManager() {
       toast.error("Failed to update one or more applicants.");
     }
   };
+  
+
 
   const handleReject = async () => {
     try {
       await Promise.all(
         selectedIds.map(async (id) => {
           const applicant = applicantList.find((a) => a.id === id);
+          if (!applicant || !applicant.email) return;
+  
           const { full_name, email, phone_number } = applicant;
-
-          await axios.post("http://localhost:5000/reject/add-reject-applicants", {
-            id,
-            fullName: full_name,
-            email,
-            phoneNumber: phone_number,
-          });
-
-          await axios.delete(
-            `http://localhost:5000/applicants/delete-applicant?id=${id}&fullName=${full_name}`
-          );
+  
+          try {
+            // Add to rejected list
+            await axios.post("http://localhost:5000/reject/add-reject-applicants", {
+              id,
+              fullName: full_name,
+              email,
+              phoneNumber: phone_number,
+            });
+  
+            // Delete original applicant entry
+            await axios.delete(
+              `http://localhost:5000/applicants/delete-applicant?id=${id}&fullName=${encodeURIComponent(full_name)}`
+            );
+  
+            // Send rejection email
+            await axios.get(
+              `http://localhost:5000/email/send-reject?email=${encodeURIComponent(email)}`
+            );
+          } catch (innerErr) {
+            console.warn(`Failed to process rejection for applicant ID ${id}:`, innerErr);
+          }
         })
       );
-
+  
       toast.success(`Rejected ${selectedIds.length} applicant(s).`);
       setApplicantList((prevList) =>
+        prevList.filter((a) => !selectedIds.includes(a.id))
+      );
+      setFilteredApplicants((prevList) =>
         prevList.filter((a) => !selectedIds.includes(a.id))
       );
       setSelectedIds([]);
@@ -140,6 +175,7 @@ function ApplicantStatusManager() {
       toast.error("Failed to reject one or more applicants.");
     }
   };
+  
 
   // Handle the search functionality
   const handleSearch = (e) => {

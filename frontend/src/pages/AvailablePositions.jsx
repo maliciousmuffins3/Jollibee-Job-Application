@@ -113,7 +113,7 @@ function AvailablePositions() {
       {isModalOpen && (
         <div
           onClick={closeModal} // Close modal if clicking outside
-          className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-70"
+          className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-70 "
         >
           <div
             onClick={(e) => e.stopPropagation()} // Prevent click from closing modal when inside
@@ -132,7 +132,7 @@ function AvailablePositions() {
                 type="text"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="input input-bordered w-full mt-1 py-2 px-3 rounded-md shadow-sm"
+                className="input input-bordered w-full mt-1 py-2 px-3 rounded-md shadow-sm dark:text-white"
                 placeholder="Enter role"
               />
             </div>
@@ -142,8 +142,9 @@ function AvailablePositions() {
                 type="text"
                 value={requirements}
                 onChange={(e) => setRequirements(e.target.value)}
-                className="input input-bordered w-full mt-1 py-2 px-3 rounded-md shadow-sm"
+                className="input input-bordered w-full mt-1 py-2 px-3 rounded-md shadow-sm dark:text-white"
                 placeholder="Enter requirements"
+                
               />
             </div>
             <div className="flex justify-between gap-4 mt-4">

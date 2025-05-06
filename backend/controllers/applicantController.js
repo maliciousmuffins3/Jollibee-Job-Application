@@ -10,7 +10,7 @@ const addApplicant = async (req, res) => {
   //     resume: true,
   // }
 
-  const { fullName, email, phoneNumber } = req.body;
+  const { fullName, email, phoneNumber,applyingPosition } = req.body;
   const isResumeExist = req.file ? true : false;
   const data = req.file.buffer;
 
@@ -24,11 +24,12 @@ const addApplicant = async (req, res) => {
     const customFileName = req.file.originalname; // You can customize the name here
 
     const sqlQuery =
-      "INSERT INTO applicants (email, full_name, phone_number, resume) VALUES (?, ?, ?, ?)";
+      "INSERT INTO applicants (email, full_name, phone_number, applying_position, resume) VALUES (?, ?, ?, ?, ?)";
     const [rows] = await db.execute(sqlQuery, [
       email,
       fullName,
       phoneNumber,
+      applyingPosition,
       req.file.originalname,
     ]);
 

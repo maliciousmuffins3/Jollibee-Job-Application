@@ -15,7 +15,9 @@ function ApplicantList() {
   const handleCheckboxChange = (event, applicantId) => {
     const isChecked = event.target.checked;
     setSelectedIds((prev) =>
-      isChecked ? [...prev, applicantId] : prev.filter((id) => id !== applicantId)
+      isChecked
+        ? [...prev, applicantId]
+        : prev.filter((id) => id !== applicantId)
     );
   };
 
@@ -73,34 +75,53 @@ function ApplicantList() {
   };
 
   const handleReject = async () => {
-    for (const applicantId of selectedIds) {
-      const applicant = applicantList.find((a) => a.id === applicantId);
+    // Create a temporary list to store the applicants that are going to be rejected
+    const applicantsToReject = selectedIds.map((applicantId) => 
+      applicantList.find((applicant) => applicant.id === applicantId)
+    );
+  
+    // Loop through the selected applicants and reject them
+    for (const applicant of applicantsToReject) {
       const { id, full_name, email, phone_number } = applicant;
-
+  
       try {
+        // Send reject request
         await axios.post("http://localhost:5000/reject/add-reject-applicants", {
           id,
           fullName: full_name,
           email,
           phoneNumber: phone_number,
         });
-
+  
+        // Delete applicant from the database
         const deleteUrl = `http://localhost:5000/applicants/delete-applicant?id=${id}&fullName=${full_name}`;
         await axios.delete(deleteUrl);
-
-        toast.success(`Applicant ${full_name} rejected successfully.`);
-
+  
+        // Send rejection email
+        await axios.get(
+          `http://localhost:5000/email/send-reject?email=${encodeURIComponent(email)}`
+        );
+  
+        // Update the state to reflect the changes after rejection
         setApplicantList((prevList) =>
           prevList.filter((applicant) => applicant.id !== id)
         );
+  
+        setFilteredApplicantList((prevList) =>
+          prevList.filter((applicant) => applicant.id !== id)
+        );
+  
+        toast.success(`Applicant ${full_name} rejected successfully.`);
       } catch (e) {
         console.error(`Error rejecting applicant ID ${id}:`, e);
         toast.error(`Failed to reject applicant ID ${id}.`);
       }
     }
-
+  
+    // Clear the selected applicant IDs
     setSelectedIds([]);
   };
+  
 
   const refreshApplicantList = async () => {
     try {
@@ -142,8 +163,12 @@ function ApplicantList() {
     if (searchTerm) {
       filtered = filtered.filter(
         (applicant) =>
-          applicant.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          applicant.applying_position?.toLowerCase().includes(searchTerm.toLowerCase())
+          applicant.full_name
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          applicant.applying_position
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase())
       );
     }
 
@@ -190,7 +215,9 @@ function ApplicantList() {
 
   return (
     <>
-      <h1 className="font-bold text-[clamp(2rem,5vw,2.5rem)] mb-4">Applicants</h1>
+      <h1 className="font-bold text-[clamp(2rem,5vw,2.5rem)] mb-4">
+        Applicants
+      </h1>
 
       {/* Search and Date Filter */}
       <div className="mb-4 flex gap-4">
@@ -201,7 +228,9 @@ function ApplicantList() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <label className="font-semibold flex items-center ml-auto">Schedule Date Filter:</label>
+        <label className="font-semibold flex items-center ml-auto">
+          Schedule Date Filter:
+        </label>
         <input
           type="date"
           className="input input-bordered"
@@ -211,7 +240,7 @@ function ApplicantList() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="table text-center">
+        <table className="table text-center min-w-full table-auto">
           <thead>
             <tr>
               <th>
