@@ -24,9 +24,7 @@ function ApplicantList() {
   const handleCheckboxChange = (event, applicantId) => {
     const isChecked = event.target.checked;
     setSelectedIds((prev) =>
-      isChecked
-        ? [...prev, applicantId]
-        : prev.filter((id) => id !== applicantId)
+      isChecked ? [...prev, applicantId] : prev.filter((id) => id !== applicantId)
     );
   };
 
@@ -141,14 +139,25 @@ function ApplicantList() {
       setApplicantList(applicants);
       setFilteredApplicantList(applicants);
 
-      const statusResults = await Promise.all(
-        applicants.map((app) => fetchApplicantStatus(app.id))
-      );
-      const map = {};
-      applicants.forEach((app, index) => {
-        map[app.id] = statusResults[index];
-      });
-      setStatusMap(map);
+      if (applicants && applicants.length > 0) {
+        const statusResults = await Promise.all(
+          applicants.map(async (app) => {
+            try {
+              return await fetchApplicantStatus(app.id);
+            } catch (err) {
+              console.error(`Error fetching status for applicant ${app.id} during refresh:`, err);
+              return { status: "Applied" }; // Fallback status on error
+            }
+          })
+        );
+        const map = {};
+        applicants.forEach((app, index) => {
+          map[app.id] = statusResults[index];
+        });
+        setStatusMap(map);
+      } else {
+        setError("No applicants found.");
+      }
     } catch (e) {
       console.error("Error refreshing applicant list:", e);
       setError("Failed to refresh applicant list.");
@@ -166,7 +175,8 @@ function ApplicantList() {
       return res.data || { status: "Applied" }; // Ensure we always return an object
     } catch (e) {
       console.error(`Error fetching status for applicant ${id}:`, e);
-      return { status: "Applied" };
+      // Do not re-throw here, handle within refreshApplicantList to prevent infinite loading
+      return { status: "Applied", error: true }; // Indicate an error in fetching status
     }
   };
 
@@ -211,14 +221,23 @@ function ApplicantList() {
         setApplicantList(applicants);
         setFilteredApplicantList(applicants);
 
-        const statusResults = await Promise.all(
-          applicants.map((app) => fetchApplicantStatus(app.id))
-        );
-        const map = {};
-        applicants.forEach((app, index) => {
-          map[app.id] = statusResults[index];
-        });
-        setStatusMap(map);
+        if (applicants && applicants.length > 0) {
+          const initialStatusMap = {};
+          const statusPromises = applicants.map(async (app) => {
+            try {
+              const status = await fetchApplicantStatus(app.id);
+              initialStatusMap[app.id] = status;
+            } catch (err) {
+              console.error(`Error fetching initial status for ${app.id}:`, err);
+              initialStatusMap[app.id] = { status: "Applied", error: true };
+            }
+          });
+
+          await Promise.all(statusPromises);
+          setStatusMap(initialStatusMap);
+        } else {
+          setError("No applicants found.");
+        }
       } catch (e) {
         console.error("Error Fetching Applicants or Status:", e);
         setError("Failed to fetch applicant data.");
@@ -237,10 +256,6 @@ function ApplicantList() {
 
   if (loading) {
     return <div className="text-center py-10">Loading applicants...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-10 text-red-500">Error: {error}</div>;
   }
 
   return (
@@ -294,57 +309,67 @@ function ApplicantList() {
             </tr>
           </thead>
           <tbody>
-            {paginatedApplicants.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <input
-                    type="checkbox"
-                    className="checkbox"
-                    checked={selectedIds.includes(item.id)}
-                    onChange={(e) => handleCheckboxChange(e, item.id)}
-                  />
-                </td>
-                <td>{item.id}</td>
-                <td>{item.full_name}</td>
-                <td>{item.email}</td>
-                <td>{item.phone_number}</td>
-                <td>{item.applying_position || "—"}</td>
-                <td>{statusMap[item.id]?.status || "Applied"}</td>
-                <td>
-                  <button
-                    className="btn btn-ghost btn-xs text-blue-600 hover:underline"
-                    onClick={() => fetchFile(item.full_name, item.resume)}
-                    disabled={loading}
-                  >
-                    Download
-                  </button>
+            {paginatedApplicants.length > 0 ? (
+              paginatedApplicants.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      className="checkbox"
+                      checked={selectedIds.includes(item.id)}
+                      onChange={(e) => handleCheckboxChange(e, item.id)}
+                    />
+                  </td>
+                  <td>{item.id}</td>
+                  <td>{item.full_name}</td>
+                  <td>{item.email}</td>
+                  <td>{item.phone_number}</td>
+                  <td>{item.applying_position || "—"}</td>
+                  <td>{statusMap[item.id]?.status || "Applied"}</td>
+                  <td>
+                    <button
+                      className="btn btn-ghost btn-xs text-blue-600 hover:underline"
+                      onClick={() => fetchFile(item.full_name, item.resume)}
+                      disabled={loading}
+                    >
+                      Download
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8} className="text-center py-10 text-gray-500 italic">
+                  {error === "No applicants found." ? "No applicants found." : "No applicants matching the filter criteria."}
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Pagination */}
-      <div className="mt-4 flex justify-center">
-        <button
-          className="btn btn-ghost"
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1 || loading}
-        >
-          Previous
-        </button>
-        <span className="mx-4 mt-1 px-3 bg-slate-800 rounded-full flex self-center">
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          className="btn btn-ghost"
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages || loading}
-        >
-          Next
-        </button>
-      </div>
+      {totalPages > 1 && filteredApplicantList.length > 0 && (
+        <div className="mt-4 flex justify-center">
+          <button
+            className="btn btn-ghost"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1 || loading}
+          >
+            Previous
+          </button>
+          <span className="mx-4 mt-1 px-3 bg-slate-800 rounded-full flex self-center">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            className="btn btn-ghost"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages || loading}
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* Schedule Date Picker */}
       <div className="mt-6 flex items-center gap-4">
@@ -363,14 +388,14 @@ function ApplicantList() {
         <button
           className="btn btn-success text-white"
           onClick={handleSchedule}
-          disabled={selectedIds.length === 0 || !scheduleDate || loading}
+          disabled={selectedIds.length === 0 || !scheduleDate || loading || applicantList.length === 0}
         >
           Schedule Meeting
         </button>
         <button
           className="btn btn-error text-white flex items-center gap-1"
           onClick={handleReject}
-          disabled={selectedIds.length === 0 || loading}
+          disabled={selectedIds.length === 0 || loading || applicantList.length === 0}
         >
           <RiEjectFill />
           Reject
