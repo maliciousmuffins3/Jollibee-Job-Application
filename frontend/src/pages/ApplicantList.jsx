@@ -11,6 +11,15 @@ function ApplicantList() {
   const [scheduleDate, setScheduleDate] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const rowsPerPage = 30;
+
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const paginatedApplicants = filteredApplicantList.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredApplicantList.length / rowsPerPage);
 
   const handleCheckboxChange = (event, applicantId) => {
     const isChecked = event.target.checked;
@@ -23,18 +32,21 @@ function ApplicantList() {
 
   async function fetchFile(fullName, fileName) {
     if (!fileName) {
-      alert("No resume file available for this applicant.");
+      toast.warn("No resume file available for this applicant.");
       return;
     }
 
     const encodedFullName = encodeURIComponent(fullName);
     const encodedFileName = encodeURIComponent(fileName);
 
-    const url = `http://localhost:5000/applicants/file/${encodedFullName}/${encodedFileName}`;
+    const url = import.meta.env.VITE_SERVER_URL + `/applicants/file/${encodedFullName}/${encodedFileName}`;
 
     try {
       const res = await fetch(url);
-      if (!res.ok) throw new Error("File not found");
+      if (!res.ok) {
+        const message = `An error occurred while fetching the file: ${res.status}`;
+        throw new Error(message);
+      }
 
       const blob = await res.blob();
       const link = document.createElement("a");
@@ -45,8 +57,8 @@ function ApplicantList() {
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
     } catch (err) {
-      console.error(err);
-      alert("Error fetching file");
+      console.error("Error fetching file:", err);
+      toast.error("Error fetching file.");
     }
   }
 
@@ -58,75 +70,72 @@ function ApplicantList() {
 
     for (const applicantId of selectedIds) {
       try {
-        await axios.post("http://localhost:5000/applicant_status/set-status", {
+        await axios.post(import.meta.env.VITE_SERVER_URL + "/applicant_status/set-status", {
           id: applicantId,
           status: "Scheduled",
           schedule_date: scheduleDate,
         });
+        toast.success(`Meeting scheduled for applicant ID ${applicantId}.`);
       } catch (e) {
         console.error("Error scheduling applicant:", applicantId, e);
-        toast.error(`Failed to schedule applicant ID ${applicantId}`);
+        toast.error(`Failed to schedule applicant ID ${applicantId}.`);
       }
     }
 
-    toast.success("Meeting scheduled for selected applicants.");
     setSelectedIds([]);
+    setScheduleDate(""); // Clear schedule date after scheduling
     await refreshApplicantList(); // 🔄 Force refresh after scheduling
   };
 
   const handleReject = async () => {
-    // Create a temporary list to store the applicants that are going to be rejected
-    const applicantsToReject = selectedIds.map((applicantId) => 
-      applicantList.find((applicant) => applicant.id === applicantId)
-    );
-  
-    // Loop through the selected applicants and reject them
-    for (const applicant of applicantsToReject) {
-      const { id, full_name, email, phone_number } = applicant;
-  
-      try {
-        // Send reject request
-        await axios.post("http://localhost:5000/reject/add-reject-applicants", {
-          id,
-          fullName: full_name,
-          email,
-          phoneNumber: phone_number,
-        });
-  
-        // Delete applicant from the database
-        const deleteUrl = `http://localhost:5000/applicants/delete-applicant?id=${id}&fullName=${full_name}`;
-        await axios.delete(deleteUrl);
-  
-        // Send rejection email
-        await axios.get(
-          `http://localhost:5000/email/send-reject?email=${encodeURIComponent(email)}`
-        );
-  
-        // Update the state to reflect the changes after rejection
-        setApplicantList((prevList) =>
-          prevList.filter((applicant) => applicant.id !== id)
-        );
-  
-        setFilteredApplicantList((prevList) =>
-          prevList.filter((applicant) => applicant.id !== id)
-        );
-  
-        toast.success(`Applicant ${full_name} rejected successfully.`);
-      } catch (e) {
-        console.error(`Error rejecting applicant ID ${id}:`, e);
-        toast.error(`Failed to reject applicant ID ${id}.`);
+    if (selectedIds.length === 0) {
+      toast.warn("Please select applicants to reject.");
+      return;
+    }
+
+    for (const applicantId of selectedIds) {
+      const applicantToReject = applicantList.find((applicant) => applicant.id === applicantId);
+      if (applicantToReject) {
+        const { id, full_name, email, phone_number } = applicantToReject;
+        try {
+          await axios.post(import.meta.env.VITE_SERVER_URL + "/reject/add-reject-applicants", {
+            id,
+            fullName: full_name,
+            email,
+            phoneNumber: phone_number,
+          });
+
+          const deleteUrl = import.meta.env.VITE_SERVER_URL + `/applicants/delete-applicant?id=${id}&fullName=${encodeURIComponent(full_name)}`;
+          await axios.delete(deleteUrl);
+
+          await axios.get(
+            import.meta.env.VITE_SERVER_URL + `/email/send-reject?email=${encodeURIComponent(email)}`
+          );
+
+          setApplicantList((prevList) =>
+            prevList.filter((applicant) => applicant.id !== id)
+          );
+
+          setFilteredApplicantList((prevList) =>
+            prevList.filter((applicant) => applicant.id !== id)
+          );
+
+          toast.success(`Applicant ${full_name} rejected successfully.`);
+        } catch (e) {
+          console.error(`Error rejecting applicant ID ${id}:`, e);
+          toast.error(`Failed to reject applicant ${full_name}.`);
+        }
       }
     }
-  
-    // Clear the selected applicant IDs
     setSelectedIds([]);
   };
-  
 
   const refreshApplicantList = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const response = await axios.get(
-        "http://localhost:5000/applicants/get-applicants"
+        import.meta.env.VITE_SERVER_URL + "/applicants/get-applicants"
       );
       const applicants = response.data;
       setApplicantList(applicants);
@@ -142,18 +151,22 @@ function ApplicantList() {
       setStatusMap(map);
     } catch (e) {
       console.error("Error refreshing applicant list:", e);
+      setError("Failed to refresh applicant list.");
       toast.error("Failed to refresh applicant list.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchApplicantStatus = async (id) => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/applicant_status/get-applicant-status?id=${id}`
+        import.meta.env.VITE_SERVER_URL + `/applicant_status/get-applicant-status?id=${id}`
       );
-      return res.data?.status || "Applied";
+      return res.data || { status: "Applied" }; // Ensure we always return an object
     } catch (e) {
-      return "Applied";
+      console.error(`Error fetching status for applicant ${id}:`, e);
+      return { status: "Applied" };
     }
   };
 
@@ -163,31 +176,36 @@ function ApplicantList() {
     if (searchTerm) {
       filtered = filtered.filter(
         (applicant) =>
-          applicant.full_name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          applicant.applying_position
-            ?.toLowerCase()
-            .includes(searchTerm.toLowerCase())
+          applicant.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          applicant.applying_position?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     if (selectedDate) {
       filtered = filtered.filter(
-        (applicant) =>
-          new Date(applicant.scheduleDate).toLocaleDateString() ===
-          new Date(selectedDate).toLocaleDateString()
+        (applicant) => {
+          const applicantStatus = statusMap[applicant.id];
+          if (applicantStatus && applicantStatus.schedule_date) {
+            const applicantScheduleDate = new Date(applicantStatus.schedule_date);
+            const filterDate = new Date(selectedDate);
+            return applicantScheduleDate.toLocaleDateString() === filterDate.toLocaleDateString();
+          }
+          return false; // If no schedule date, it doesn't match the filter
+        }
       );
     }
 
     setFilteredApplicantList(filtered);
+    setCurrentPage(1); // Reset to the first page after filtering
   };
 
   useEffect(() => {
-    const fetchApplicants = async () => {
+    const fetchInitialApplicants = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const response = await axios.get(
-          "http://localhost:5000/applicants/get-applicants"
+          import.meta.env.VITE_SERVER_URL + "/applicants/get-applicants"
         );
         const applicants = response.data;
         setApplicantList(applicants);
@@ -203,19 +221,31 @@ function ApplicantList() {
         setStatusMap(map);
       } catch (e) {
         console.error("Error Fetching Applicants or Status:", e);
+        setError("Failed to fetch applicant data.");
+        toast.error("Failed to fetch applicant data.");
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchApplicants();
+    fetchInitialApplicants();
   }, []);
 
   useEffect(() => {
     handleFilter();
   }, [searchTerm, selectedDate]);
 
+  if (loading) {
+    return <div className="text-center py-10">Loading applicants...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-10 text-red-500">Error: {error}</div>;
+  }
+
   return (
     <>
-      <h1 className="font-bold text-[clamp(2rem,5vw,2.5rem)] mb-4">
+      <h1 className="font-bold text-2xl md:text-3xl lg:text-4xl mb-4 md:mb-6 lg:mb-8 text-blue-700 dark:text-blue-300">
         Applicants
       </h1>
 
@@ -248,6 +278,7 @@ function ApplicantList() {
                   <button
                     className="btn btn-ghost text-xl text-blue-600 hover:underline flex items-center gap-2 p-2 border rounded-full"
                     onClick={refreshApplicantList}
+                    disabled={loading}
                   >
                     <RiRefreshFill />
                   </button>
@@ -263,7 +294,7 @@ function ApplicantList() {
             </tr>
           </thead>
           <tbody>
-            {filteredApplicantList.map((item) => (
+            {paginatedApplicants.map((item) => (
               <tr key={item.id}>
                 <td>
                   <input
@@ -278,11 +309,12 @@ function ApplicantList() {
                 <td>{item.email}</td>
                 <td>{item.phone_number}</td>
                 <td>{item.applying_position || "—"}</td>
-                <td>{statusMap[item.id] || "Applied"}</td>
+                <td>{statusMap[item.id]?.status || "Applied"}</td>
                 <td>
                   <button
                     className="btn btn-ghost btn-xs text-blue-600 hover:underline"
                     onClick={() => fetchFile(item.full_name, item.resume)}
+                    disabled={loading}
                   >
                     Download
                   </button>
@@ -293,6 +325,27 @@ function ApplicantList() {
         </table>
       </div>
 
+      {/* Pagination */}
+      <div className="mt-4 flex justify-center">
+        <button
+          className="btn btn-ghost"
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1 || loading}
+        >
+          Previous
+        </button>
+        <span className="mx-4 mt-1 px-3 bg-slate-800 rounded-full flex self-center">
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          className="btn btn-ghost"
+          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          disabled={currentPage === totalPages || loading}
+        >
+          Next
+        </button>
+      </div>
+
       {/* Schedule Date Picker */}
       <div className="mt-6 flex items-center gap-4">
         <label className="font-semibold">Schedule Date:</label>
@@ -301,6 +354,7 @@ function ApplicantList() {
           className="input input-bordered"
           value={scheduleDate}
           onChange={(e) => setScheduleDate(e.target.value)}
+          disabled={loading}
         />
       </div>
 
@@ -309,14 +363,14 @@ function ApplicantList() {
         <button
           className="btn btn-success text-white"
           onClick={handleSchedule}
-          disabled={selectedIds.length === 0 || !scheduleDate}
+          disabled={selectedIds.length === 0 || !scheduleDate || loading}
         >
           Schedule Meeting
         </button>
         <button
           className="btn btn-error text-white flex items-center gap-1"
           onClick={handleReject}
-          disabled={selectedIds.length === 0}
+          disabled={selectedIds.length === 0 || loading}
         >
           <RiEjectFill />
           Reject

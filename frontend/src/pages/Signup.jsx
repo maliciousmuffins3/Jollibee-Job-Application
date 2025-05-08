@@ -4,20 +4,42 @@ import axios from "axios";
 import logo from "../assets/company-logo.png";
 
 function Signup() {
+    // This will show all available environment variables
     const [formData, setFormData] = useState({
         fullName: "",
         email: "",
         password: "",
         confirmPassword: "",
+        otp: "",  // OTP field
     });
 
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [otpSent, setOtpSent] = useState(false); // Track OTP state
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    // Handle OTP request
+    const handleOtpRequest = async () => {
+        setError(""); // Clear previous errors
+        try {
+            setLoading(true);
+            const response = await axios.post(import.meta.env.VITE_SERVER_URL + "/auth/send-otp", {
+                email: formData.email,
+            });
+            setSuccess(response.data.message);
+            setOtpSent(true);  // OTP sent, expect OTP input from user
+        } catch (err) {
+            setError(err.response?.data?.error || "Failed to send OTP");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle form submission (registration + OTP verification)
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
@@ -28,8 +50,20 @@ function Signup() {
             return;
         }
 
+        if (!otpSent) {
+            setError("Please verify your email by entering the OTP first.");
+            return;
+        }
+
+        // Step 1: Verify OTP before registering the user
         try {
-            const response = await axios.post("http://localhost:5000/auth/signup", {
+            const otpResponse = await axios.post(import.meta.env.VITE_SERVER_URL + "/auth/verify-registration", {
+                email: formData.email,
+                otp: formData.otp
+            });
+
+            // Step 2: If OTP is verified, proceed with registration
+            const response = await axios.post(import.meta.env.VITE_SERVER_URL + "/auth/signup", {
                 fullName: formData.fullName,
                 email: formData.email,
                 password: formData.password
@@ -50,50 +84,85 @@ function Signup() {
                 </div>
 
                 <h2 className="text-2xl font-bold text-center mb-4">Sign Up</h2>
-                {error && <p className="text-red-500 text-center">{error}</p>}
-                {success && <p className="text-green-500 text-center">{success}</p>}
 
-                <form onSubmit={handleSubmit}>
-                    <input 
-                        type="text" 
-                        name="fullName"
-                        placeholder="Full Name" 
-                        className="input input-bordered w-full mb-3" 
-                        value={formData.fullName}
-                        onChange={handleChange}
-                        required
-                    />
-                    <input 
-                        type="email" 
-                        name="email"
-                        placeholder="Email" 
-                        className="input input-bordered w-full mb-3" 
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                    />
-                    <input 
-                        type="password" 
-                        name="password"
-                        placeholder="Password" 
-                        className="input input-bordered w-full mb-3" 
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                    />
-                    <input 
-                        type="password" 
-                        name="confirmPassword"
-                        placeholder="Confirm Password" 
-                        className="input input-bordered w-full mb-3" 
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        required
-                    />
-                    <button type="submit" className="btn bg-blood hover:bg-blood/80 w-full">
-                        Sign Up
-                    </button>
-                </form>
+                {/* DaisyUI Alert for Error */}
+                {error && (
+                    <div className="alert alert-error mb-4">
+                        <div>
+                            <span>{error}</span>
+                        </div>
+                    </div>
+                )}
+
+                {/* DaisyUI Alert for Success */}
+                {success && (
+                    <div className="alert alert-success mb-4">
+                        <div>
+                            <span>{success}</span>
+                        </div>
+                    </div>
+                )}
+
+                {!otpSent ? (
+                    // First stage: Request OTP
+                    <form onSubmit={(e) => { e.preventDefault(); handleOtpRequest(); }}>
+                        <input 
+                            type="email" 
+                            name="email"
+                            placeholder="Email" 
+                            className="input input-bordered w-full mb-3" 
+                            value={formData.email}
+                            onChange={handleChange}
+                            required
+                        />
+                        <button type="submit" className="btn bg-blood hover:bg-blood/80 w-full" disabled={loading}>
+                            {loading ? "Sending OTP..." : "Send OTP"}
+                        </button>
+                    </form>
+                ) : (
+                    // Second stage: OTP input and registration form
+                    <form onSubmit={handleSubmit}>
+                        <input 
+                            type="text" 
+                            name="fullName"
+                            placeholder="Full Name" 
+                            className="input input-bordered w-full mb-3" 
+                            value={formData.fullName}
+                            onChange={handleChange}
+                            required
+                        />
+                        <input 
+                            type="password" 
+                            name="password"
+                            placeholder="Password" 
+                            className="input input-bordered w-full mb-3" 
+                            value={formData.password}
+                            onChange={handleChange}
+                            required
+                        />
+                        <input 
+                            type="password" 
+                            name="confirmPassword"
+                            placeholder="Confirm Password" 
+                            className="input input-bordered w-full mb-3" 
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            required
+                        />
+                        <input 
+                            type="text" 
+                            name="otp"
+                            placeholder="Enter OTP" 
+                            className="input input-bordered w-full mb-3" 
+                            value={formData.otp}
+                            onChange={handleChange}
+                            required
+                        />
+                        <button type="submit" className="btn bg-blood hover:bg-blood/80 w-full" disabled={loading}>
+                            {loading ? "Registering..." : "Register"}
+                        </button>
+                    </form>
+                )}
 
                 <div className="text-center mt-3">
                     Already have an account? <Link to="/log-in" className="text-error">Login</Link>

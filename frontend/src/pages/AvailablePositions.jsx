@@ -11,7 +11,7 @@ function AvailablePositions() {
   // Fetch all available positions
   const fetchPositions = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/available_position/show-positions");
+      const response = await axios.get(import.meta.env.VITE_SERVER_URL + "/available_position/show-positions");
       setPositions(response.data);
     } catch (error) {
       console.error("Error fetching positions", error);
@@ -27,7 +27,7 @@ function AvailablePositions() {
     }
 
     try {
-      await axios.post("http://localhost:5000/available_position/add-position", {
+      await axios.post(import.meta.env.VITE_SERVER_URL + "/available_position/add-position", {
         role,
         requirements,
       });
@@ -45,7 +45,7 @@ function AvailablePositions() {
   // Remove a position
   const removePosition = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/available_position/remove-position?id=${id}`);
+      await axios.delete(import.meta.env.VITE_SERVER_URL + `/available_position/remove-position?id=${id}`);
       toast.success("Position removed successfully!");
       fetchPositions(); // Refresh the list of positions
     } catch (error) {
@@ -64,7 +64,7 @@ function AvailablePositions() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-semibold text-center mb-6">Available Positions</h1>
+      <h1 className="text-3xl font-semibold text-center mb-6 text-blue-700 dark:text-blue-300">Available Positions</h1>
 
       {/* Button to open the modal */}
       <div className="flex justify-center mb-6">
@@ -96,7 +96,7 @@ function AvailablePositions() {
                 className="bg-blue-600 text-white py-1 px-3 rounded-lg hover:bg-blue-700"
                 onClick={async () => {
                   const res = await axios.get(
-                    `http://localhost:5000/available_position/get-position?id=${position.id}`
+                    import.meta.env.VITE_SERVER_URL + `/available_position/get-position?id=${position.id}`
                   );
                   const data = res.data;
                   alert(`Role: ${data.role}\nRequirements: ${data.requirements}`);

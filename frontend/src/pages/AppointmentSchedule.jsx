@@ -7,11 +7,15 @@ function ScheduledApplicants() {
   const [filteredApplicants, setFilteredApplicants] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10; // Fixed rows per page
+  const [loading, setLoading] = useState(false);
 
   const fetchScheduledApplicants = async () => {
+    setLoading(true);
     try {
       const statusRes = await axios.get(
-        "http://localhost:5000/applicant_status/get-all-applicant-status"
+        import.meta.env.VITE_SERVER_URL + "/applicant_status/get-all-applicant-status"
       );
 
       const scheduledEntries = statusRes.data.filter(
@@ -19,7 +23,7 @@ function ScheduledApplicants() {
       );
 
       const applicantRes = await axios.get(
-        "http://localhost:5000/applicants/get-applicants"
+        import.meta.env.VITE_SERVER_URL + "/applicants/get-applicants"
       );
       const allApplicants = applicantRes.data;
 
@@ -38,8 +42,11 @@ function ScheduledApplicants() {
 
       setScheduledApplicants(scheduled);
       setFilteredApplicants(scheduled);
+      setCurrentPage(1);
     } catch (error) {
       console.error("Failed to fetch scheduled applicants:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,6 +78,7 @@ function ScheduledApplicants() {
     }
 
     setFilteredApplicants(filtered);
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -79,7 +87,7 @@ function ScheduledApplicants() {
 
   const toggleAttendance = async (id, currentAttended) => {
     try {
-      await axios.post("http://localhost:5000/applicant_status/update-attended", {
+      await axios.post(import.meta.env.VITE_SERVER_URL + "/applicant_status/update-attended", {
         id,
         attendedAppointment: !currentAttended,
       });
@@ -99,17 +107,26 @@ function ScheduledApplicants() {
     }
   };
 
+  // Pagination logic
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentApplicants = filteredApplicants.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredApplicants.length / rowsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
   return (
-    <div>
-      <h1 className="font-bold text-[clamp(2rem,5vw,2.5rem)] mb-4">
+    <div className="p-4 md:p-6 lg:p-8">
+      <h1 className="font-bold text-2xl md:text-3xl lg:text-4xl mb-4 md:mb-6 lg:mb-8 text-blue-700 dark:text-blue-300">
         Scheduled Applicants
       </h1>
 
-      <div className="mb-4 flex justify-between gap-4">
+      {/* Search and Date Filter */}
+      <div className="mb-4 flex gap-4">
         <input
           type="text"
           className="input input-bordered w-1/4"
-          placeholder="Search by Position or Name"
+          placeholder="Search by Name or Position"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -124,61 +141,140 @@ function ScheduledApplicants() {
         />
       </div>
 
-      <div className="flex justify-start mb-4">
+      <div className="flex justify-start mb-4 md:mb-6 lg:mb-8">
         <button
-          className="btn btn-ghost text-xl text-blue-600 hover:underline flex items-center gap-1 p-3 border rounded-full bg-slate-800"
+          className="btn btn-ghost text-xl text-blue-600 hover:underline flex items-center gap-2 p-2 md:p-3 border rounded-full bg-slate-100 dark:bg-slate-800"
           onClick={fetchScheduledApplicants}
+          disabled={loading}
         >
-          <RiRefreshFill />
-          Refresh
+          <RiRefreshFill className="w-5 h-5" />
+          <span className="text-sm md:text-base">Refresh</span>
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="table text-center">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Full Name</th>
-              <th>Email</th>
-              <th>Phone Number</th>
-              <th>Position</th>
-              <th>Scheduled Date</th>
-              <th>Attended</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredApplicants.map((applicant) => (
-              <tr key={applicant.id}>
-                <td>{applicant.id}</td>
-                <td>{applicant.full_name}</td>
-                <td>{applicant.email}</td>
-                <td>{applicant.phone_number}</td>
-                <td>{applicant.applying_position || "—"}</td>
-                <td>{new Date(applicant.scheduleDate).toLocaleString()}</td>
-                <td>
-                  <button
-                    onClick={() =>
-                      toggleAttendance(applicant.id, applicant.attended)
-                    }
-                    className={`btn btn-sm ${
-                      applicant.attended ? "btn-success" : "btn-error"
-                    }`}
-                  >
-                    {applicant.attended ? "Present" : "Absent"}
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filteredApplicants.length === 0 && (
+      {loading ? (
+        <p className="text-gray-500 dark:text-gray-400">Loading scheduled applicants...</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="table w-full text-center">
+            <thead>
               <tr>
-                <td colSpan={7} className="text-gray-500 italic">
-                  No applicants found matching the filter criteria.
-                </td>
+                <th className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">ID</th>
+                <th className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Full Name</th>
+                <th className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Email</th>
+                <th className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Phone Number</th>
+                <th className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Position</th>
+                <th className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Scheduled Date</th>
+                <th className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Attended</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {currentApplicants.length > 0 ? (
+                currentApplicants.map((applicant) => (
+                  <tr key={applicant.id} className="hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
+                    <td className="text-sm md:text-base text-gray-700 dark:text-gray-300">{applicant.id}</td>
+                    <td className="text-sm md:text-base text-gray-700 dark:text-gray-300">{applicant.full_name}</td>
+                    <td className="text-sm md:text-base text-gray-700 dark:text-gray-300">{applicant.email}</td>
+                    <td className="text-sm md:text-base text-gray-700 dark:text-gray-300">{applicant.phone_number}</td>
+                    <td className="text-sm md:text-base text-gray-700 dark:text-gray-300">{applicant.applying_position || "—"}</td>
+                    <td className="text-sm md:text-base text-gray-700 dark:text-gray-300">
+                      {new Date(applicant.scheduleDate).toLocaleString()}
+                    </td>
+                    <td className="text-sm md:text-base">
+                      <button
+                        onClick={() =>
+                          toggleAttendance(applicant.id, applicant.attended)
+                        }
+                        className={`btn btn-sm ${
+                          applicant.attended ? "btn-success" : "btn-error"
+                        } text-white`}
+                      >
+                        {applicant.attended ? "Present" : "Absent"}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="text-gray-500 italic py-4">
+                    No applicants found matching the filter criteria.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      <div className="flex justify-center items-center mt-4 md:mt-6 lg:mt-8">
+        <nav className="flex items-center">
+          <ul className="flex items-center h-8 text-sm">
+            <li>
+              <button
+                onClick={() => paginate(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1 || loading}
+                className="flex items-center justify-center px-3 h-8 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+              >
+                <span className="sr-only">Previous</span>
+                <svg
+                  className="w-2.5 h-2.5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 6 10"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5 1 1 5l4 4"
+                  />
+                </svg>
+              </button>
+            </li>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <li key={page}>
+                <button
+                  onClick={() => paginate(page)}
+                  disabled={loading}
+                  className={`flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white ${
+                    currentPage === page
+                      ? "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800"
+                      : ""
+                  }`}
+                >
+                  {page}
+                </button>
+              </li>
+            ))}
+            <li>
+              <button
+                onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages || loading}
+                className="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+              >
+                <span className="sr-only">Next</span>
+                <svg
+                  className="w-2.5 h-2.5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 6 10"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 9 4-4-4-4"
+                  />
+                </svg>
+              </button>
+            </li>
+          </ul>
+        </nav>
       </div>
     </div>
   );
