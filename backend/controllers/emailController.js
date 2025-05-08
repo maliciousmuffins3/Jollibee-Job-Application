@@ -2,6 +2,8 @@
 
 // controllers/emailController.js
 const transporter = require('../utils/mailer.js');
+const {convertToPhTime} = require("../utils/getPHT.js")
+const {db} = require("../database/db.js")
 
 // Base email template
 const baseTemplate = (title, message) => `
@@ -53,19 +55,37 @@ exports.sendScheduleEmail = async (req, res) => {
   const { email } = req.query;
   if (!email) return res.status(400).json({ error: "Email is required" });
 
-  const html = baseTemplate(
-    "Interview Scheduled",
-    `<p>Hello,</p><p>Your interview has been <strong>scheduled</strong>.</p><p>Please check your dashboard for details.</p>`
-  );
-
   try {
+    // Get applicant by email
+    const [rows] = await db.execute("SELECT * FROM applicants WHERE email = ?", [email]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: "Applicant not found" });
+    }
+
+    const applicantId = rows[0].id;
+
+    // Get process status by applicant ID
+    const [statusRows] = await db.execute("SELECT * FROM process_status WHERE id = ?", [applicantId]);
+    if (!statusRows || statusRows.length === 0) {
+      return res.status(404).json({ error: "No schedule found for applicant" });
+    }
+
+    const date = statusRows[0].schedule_date;
+    const formattedDate = convertToPhTime(new Date(date).toISOString());
+
+    const html = baseTemplate(
+      "Interview Scheduled",
+      `<p>Hello,</p><p>Your interview has been <strong>scheduled</strong>.</p><p>The interview is scheduled on ${formattedDate}</p>`
+    );
+
     await sendMail(email, "You're Scheduled!", html);
     res.json({ message: "Schedule email sent." });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Failed to send email" });
   }
 };
+
 
 // 2. Hired Applicant
 exports.sendHiredEmail = async (req, res) => {

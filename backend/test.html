@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Audit Log Notifications</title>
+</head>
+<body>
+  <h1>Audit Log Realtime Notifications</h1>
+  <ul id="log"></ul>
+
+  <!-- Load socket.io client from server -->
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io('http://localhost:3000');
+
+    socket.on('connect', () => {
+      console.log('Connected to server with ID:', socket.id);
+    });
+
+    socket.on('audit-event', (data) => {
+      const li = document.createElement('li');
+      li.textContent = `[${data.time}] ${data.operation} on ${data.table}`;
+      document.getElementById('log').appendChild(li);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected');
+    });
+  </script>
+</body>
+</html>
