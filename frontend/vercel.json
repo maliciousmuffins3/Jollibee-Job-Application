@@ -2,7 +2,11 @@
     "version": 2,
     "builds": [
       {
-        "src": "build/**/*",
+        "src": "vite.config.ts",
+        "use": "@vercel/node"
+      },
+      {
+        "src": "dist/**/*",
         "use": "@vercel/static"
       }
     ],
